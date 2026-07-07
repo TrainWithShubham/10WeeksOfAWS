@@ -50,19 +50,24 @@ For deeper material, each week points to the matching module in the full **AWS Z
 
 ## How to take part
 
-You don't submit work to this repo. You build in your own space and share it publicly — that's the whole point of the challenge.
+Every week, learners complete the hands-on task, document proof of work, and
+submit it through GitHub. Public posting is part of the challenge because it
+builds consistency and accountability.
 
 1. Star and fork this repo so you always have the weekly plan.
 2. Read the week and do the labs in **your own AWS account** (Free Tier wherever possible).
-3. Document your work in **your own GitHub repo** — notes, screenshots, diagrams, any code or IaC.
-4. Post what you learned each week on LinkedIn, X, or GitHub, using the tags below.
-5. Tag us so we can follow along and reshare — **@TrainWithShubham** and **@cloudadhar**.
+3. Add your work under that week's submission folder in your fork.
+4. Open a pull request to this repo for weekly review.
+5. Post what you learned on LinkedIn and tag the community.
+
+Read the full process here: [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md).
 
 ```
 #10WeeksOfAWS   #CloudAdhar   #TrainWithShubham
 ```
 
-Consistency beats intensity here. Even one honest post a week keeps you accountable and slowly grows your network.
+Consistency beats intensity here. One honest weekly submission plus one public
+post keeps you accountable and slowly grows your network.
 
 ---
 

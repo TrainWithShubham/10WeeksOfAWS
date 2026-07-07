@@ -4,20 +4,24 @@ Thanks for being part of the challenge. This repo works a little differently fro
 
 ## Taking part as a learner
 
-The main way you participate isn't by opening pull requests here — it's by learning in public:
+The main way you participate is by completing each week's hands-on task and
+submitting your proof of work through a pull request.
 
 1. Star and fork this repo so you have the weekly plan.
 2. Do the week's labs in your own AWS account.
-3. Document your work in your own GitHub repository — notes, screenshots, diagrams, any code or IaC.
-4. Post weekly on LinkedIn, X, or GitHub with the tags:
+3. Add your notes, screenshots, diagrams, policies, or code under the weekly
+   submission folder.
+4. Open one pull request per week.
+5. Post weekly on LinkedIn, X, or GitHub with the tags:
 
    ```
    #10WeeksOfAWS   #CloudAdhar   #TrainWithShubham
    ```
 
-5. Tag [@TrainWithShubham](https://youtube.com/@TrainWithShubham) and [@cloudadhar](https://youtube.com/@cloudadhar) so we can follow along and reshare.
+6. Tag [@TrainWithShubham](https://youtube.com/@TrainWithShubham) and [@cloudadhar](https://youtube.com/@cloudadhar) so we can follow along and reshare.
 
-We don't accept learner solutions as pull requests to this repo. Keep your work in your own repo — that becomes your portfolio.
+Use [SUBMISSION_GUIDE.md](SUBMISSION_GUIDE.md) for the exact folder structure,
+PR title format, and weekly checklist.
 
 ## Improving the challenge content
 
