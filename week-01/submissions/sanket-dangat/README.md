@@ -1,8 +1,36 @@
-## Week 1 Day 2 — IAM Challenge
+# Week 1 Submission - Sanket Dangat
 
----
+## Name
+Sanket Dangat
 
-**Sanket Dangat**
+## Tasks Completed
+- [x] Watched/read the weekly content
+- [x] Completed hands-on labs
+- [x] Added screenshots or proof
+- [x] Posted on LinkedIn
+- [x] Cleaned up AWS resources
+
+## What I Built
+
+- Secured my AWS account by enabling Root MFA and configuring Billing and Budget alerts.
+- Created IAM users, groups, and roles following the principle of least privilege.
+- Built and tested a custom S3 read-only IAM policy using JSON.
+- Configured IAM Switch Role for temporary read-only access.
+- Integrated GitHub Actions with AWS using OIDC authentication without storing long-lived AWS access keys.
+
+## What I Learned
+
+- Learned AWS security best practices, including enabling Root MFA and avoiding the use of the root user for daily tasks.
+- Understood how IAM users, groups, roles, and policies help implement least-privilege access.
+- Learned to create and apply custom IAM policies using JSON for fine-grained permissions.
+- Gained hands-on experience with IAM Switch Role and temporary AWS credentials.
+- Learned how GitHub Actions can securely access AWS using OIDC and AWS STS without storing long-lived access keys.
+
+
+## LinkedIn Post
+[LinkedIn Link](https://www.linkedin.com/posts/sanket-dangat-6462b8271_10weeksofaws-10weeksofaws-aws10weekchallenge-ugcPost-7480200964805910528-nu8H/?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEJuHJYBII9imgLntyUMaz684Imwl2w4XOM)
+
+
 
 ## Topics Practiced
 - AWS account security
@@ -56,6 +84,22 @@ Deliverables:
 ### Budget Alerts
 ![image](./screenshots/budget.png)
 
+
+## Where I Got Stuck
+
+## Screenshot
+
+![image](./screenshots/cloudwatch-billing-alerts-disabled.png)
+
+**Issue:**
+Initially, I couldn't create the Billing Alarm because CloudWatch billing alerts were not enabled and billing metrics were unavailable.
+
+**Resolution:**
+
+I enabled **Receive CloudWatch billing alerts** in **Billing Preferences**, selected the **US East (N. Virginia) (`us-east-1`)** region, and then successfully created the Billing Alarm.
+
+![image](./screenshots/cloudwatch-billing-alerts-enabled.png)
+
 - Why should the AWS root user not be used daily?
   - The root user has full access to the entire AWS account.
   - Using it every day is risky because one mistake can affect all resources.
@@ -63,12 +107,6 @@ Deliverables:
   - For daily work, we should use IAM users or IAM roles with only the required permissions.
   - The root user should be used only for account setup and a few critical administrative tasks.
   - MFA should always be enabled on the root account for extra security.
-
-  **Key Learning:** 
-  - Learned AWS security best practices by enabling MFA for the root user
-  - Configuring billing and budget alerts to monitor costs
-  - Understanding why the root account should only be used for critical administrative tasks while IAM users or roles are used for daily operations.
-
 
 ---
 
@@ -110,13 +148,8 @@ Deliverables:
 ![image](./screenshots/s3-view-action.png)
 
 ### Denied Action
-![image](./screenshots/s3-denied%20action.png)
+![image](./screenshots/s3-denied-action.png)
 
-  **Key Learning** 
-  - Learned how to create an IAM group and attach a managed policy.
-  - Granted read-only access to Amazon S3 using group-based permissions.
-  - Verified that users can view S3 resources but cannot modify or delete them.
-  - Understood the principle of least privilege
 
 ---
 
@@ -159,12 +192,6 @@ Deliverables:
 ### Denied Terminate action
 ![image](./screenshots/ec2-denied-terminate-action.png)
 
-  **Key Learnings**
-  - Created an IAM group with EC2 read-only permissions.
-  - Verified that users can view EC2 resources without managing them.
-  - Confirmed that instance creation, modification, and termination are denied.
-  - Reinforced least-privilege access control.
-
 ---
 
 ## Lab 4 — Billing View Access
@@ -203,11 +230,6 @@ Deliverables:
 
 ### learner-billing user cannot manage unrelated AWS services
 ![image](./screenshots/billing-user-denied-action.png)
-
-  **Key Learnings**
-  - Configured read-only access to the AWS Billing Dashboard.
-  - Allowed users to view billing information without administrative permissions.
-  - Confirmed that access to unrelated AWS services is restricted.
 
 ---
 
@@ -271,13 +293,7 @@ Deliverables:
 ### Denied action
 ![image](./screenshots/s3-custom-policy-denied-action.png)
   - Uploading a file (s3:PutObject) was denied due to insufficient permissions.
-  - Deleting an object (s3:DeleteObject) was denied because the IAM policy does not allow this action.
-
-  **Key Learnings**
-  - Created a custom IAM policy using JSON.
-  - Applied fine-grained permissions to a specific S3 bucket.
-  - Allowed bucket listing, object viewing, and downloading only.
-  - Verified that upload and delete operations are denied due to missing permissions
+  - Deleting an object (s3:DeleteObject) was denied because the IAM policy does not allow this action
 
 ---
 
@@ -325,7 +341,7 @@ Test:
 
 Deliverables:
 
-### TrainingReadOnlyRole with ReadOnlyAcess
+### TrainingReadOnlyRole with ReadOnlyAccess
 ![image](./screenshots/trainingrole-readacess.png)
 
 ### IAM User Assume Role Policy Attached
@@ -337,16 +353,8 @@ Deliverables:
 ### Switch Role
 ![image](./screenshots/switch-role.png)
 
-### Verify Role Acess
+### Verify Role Access
 ![image](./screenshots/verify-role-access.png)
-
- **Key Learnings**
-  - Created an IAM role with the ReadOnlyAccess managed policy.
-  - Learned how to grant an IAM user permission to assume a role using the sts:AssumeRole action.
-  - Used the Switch Role feature in the AWS Management Console to temporarily assume the TrainingReadOnlyRole.
-  - Verified that the assumed role provided temporary read-only permissions based on the role's policy.
-  - Understood that Switch Role enhances security by providing temporary, least-privilege access without sharing long-term credentials.
-  - Learned that Switch Role simplifies permission management, supports secure cross-account access, and eliminates the need to create multiple IAM users for different permission levels.
 
 ---
 
@@ -583,13 +591,13 @@ Deliverables:
 ### GHA workflow
 [Workflow](oidc/aws-oidc-challenge.yml)
 
-  **Key Learnings**
-  - Configured an AWS IAM OIDC Identity Provider to establish trust with GitHub Actions.
-  - Created an IAM role that GitHub Actions can securely assume using OpenID Connect (OIDC).
-  - Configured a trust policy to restrict role assumption to a specific GitHub repository.
-  - Implemented GitHub Actions authentication using AWS STS AssumeRoleWithWebIdentity.
-  - Verified successful role assumption by checking the STS assumed-role ARN in the workflow logs.
-  - Validated secure access to AWS resources by listing S3 buckets with temporary credentials.
-  - Learned that OIDC eliminates the need to store long-lived AWS access keys in GitHub Secrets, improving security and reducing credential management overhead.
-  - Understood how temporary credentials issued by AWS STS provide secure, least-privilege access for CI/CD workflows.
 ---
+
+## Key Takeaway
+
+- Least privilege is not just a setting — it is a mindset.
+- Every IAM user, group, and role should have only the permissions required for their specific job, nothing more.
+- Use IAM groups to manage policies centrally instead of attaching policies to individual users.
+- Use IAM roles for temporary access instead of sharing long-lived credentials.
+- Use OIDC for CI/CD pipelines to eliminate the need for storing AWS access keys in GitHub Secrets.
+- This approach significantly reduces the AWS account attack surface.
