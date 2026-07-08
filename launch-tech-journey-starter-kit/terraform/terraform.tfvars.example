@@ -1,0 +1,7 @@
+aws_region        = "ap-south-1"
+project_name      = "launch-tech-journey-demo"
+instance_type     = "t2.micro"
+allowed_http_cidr = "0.0.0.0/0"
+enable_ssh        = false
+# If enable_ssh = true, set this to your public IP, for example "49.x.x.x/32"
+allowed_ssh_cidr  = "0.0.0.0/0"
