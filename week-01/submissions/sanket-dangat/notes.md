@@ -181,3 +181,229 @@ Example:
 If the identity policy allows only `s3:GetObject`, and the permission boundary allows `s3:*`, the user can still only do `s3:GetObject`.
 
 ---
+
+# IAM Interview Questions and Answers
+
+## 1. What is the difference between a Region and an Availability Zone?
+
+- **Region:** A Region is a geographical area that contains multiple Availability Zones.
+- **Availability Zone (AZ):**  An Availability Zone is one or more isolated data centers within a Region.
+
+**Example:**
+- Region: `us-east-1`
+- Availability Zone: `us-east-1a`
+
+---
+
+## When should you use CloudFront and Edge Locations?
+
+Use **Amazon CloudFront** when you need to deliver content to users with **low latency, high performance, and improved security**. CloudFront is ideal for:
+
+- Caching static and dynamic content closer to users.
+- Delivering websites, APIs, videos, and downloadable files faster.
+- Reducing traffic and load on the origin server.
+- Providing secure content delivery using HTTPS, AWS Shield, and AWS WAF.
+- Serving a global audience with consistent performance.
+
+**Edge Locations** are AWS data centers distributed around the world where CloudFront caches copies of your content. When a user requests content, CloudFront serves it from the **nearest Edge Location** whenever possible, reducing latency and improving the user experience.
+
+---
+
+## 3. What does AWS manage in the Shared Responsibility Model?
+
+AWS is responsible for **Security of the Cloud**, including:
+
+- Physical data centers
+- Networking infrastructure
+- Servers and storage hardware
+- Global AWS infrastructure
+- Hypervisor
+- Managed service infrastructure
+
+---
+
+## 4. What does the customer manage in the Shared Responsibility Model?
+
+Customers are responsible for **Security in the Cloud**, including:
+
+- IAM users, groups, and roles
+- Application security
+- Operating system patches (EC2)
+- Customer data
+- Data encryption
+- Security Groups and Network ACLs
+- Application configurations
+
+---
+
+## 5. Why should the root user not be used daily?
+
+The root user:
+
+- Has unrestricted access to the AWS account.
+- Cannot have permissions restricted.
+- Is the primary target for attackers.
+
+**Best Practice:** Use the root account only for tasks that require root privileges.
+
+---
+
+## 6. Why is MFA important for the root user?
+
+Multi-Factor Authentication (MFA):
+
+- Adds a second authentication factor.
+- Protects against stolen passwords.
+- Prevents unauthorized account access.
+
+**Best Practice:** Always enable MFA on the root account.
+
+---
+
+## 7. What is the difference between an IAM User and an IAM Role?
+
+### IAM User
+
+- A permanent identity for a person or application.
+- Has long-term credentials (password and/or access keys).
+- Used for users who need ongoing access to an AWS account.
+- Permissions are attached directly or through IAM groups.
+- Can sign in to the AWS Management Console or access AWS using access keys.
+
+### IAM Role
+
+- An identity with a set of permissions that can be **assumed**.
+- Does not have long-term credentials.
+- Provides temporary security credentials through AWS STS.
+- Can be assumed by IAM users, AWS services (such as EC2 or Lambda), or external identities.
+- Commonly used for cross-account access, AWS service access, and federated authentication.
+
+### Key Difference
+
+- **IAM User** = Permanent identity with long-term credentials.
+- **IAM Role** = Temporary identity that provides temporary credentials when assumed.
+
+---
+
+## 8. Why should permissions be attached to groups instead of individual users?
+
+Using groups:
+
+- Simplifies permission management.
+- Keeps permissions consistent.
+- Makes onboarding and offboarding easier.
+- Reduces administrative overhead.
+
+---
+
+## 9. What is Least Privilege?
+
+The **Principle of Least Privilege** means granting only the minimum permissions required to perform a task.
+
+**Benefits:**
+
+- Reduces security risks.
+- Prevents accidental changes.
+- Limits damage from compromised accounts.
+
+---
+
+## 10. What does an IAM policy contain?
+
+An IAM policy is a JSON document containing:
+
+- **Effect** (`Allow` or `Deny`)
+- **Action** (AWS API operations)
+- **Resource** (AWS resources)
+- **Condition** (Optional restrictions)
+
+Example:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": "s3:GetObject",
+  "Resource": "arn:aws:s3:::my-bucket/*"
+}
+```
+
+---
+
+## 11. What is the difference between a Managed Policy and an Inline Policy?
+
+### Managed Policy
+
+- Standalone policy.
+- Reusable across multiple users, groups, and roles.
+- Can be AWS-managed or customer-managed.
+- Easier to maintain.
+
+### Inline Policy
+
+- Embedded directly into a single user, group, or role.
+- Cannot be reused.
+- Deleted automatically with the identity.
+
+---
+
+## 12. What does a Permission Boundary do?
+
+A **Permission Boundary** defines the **maximum permissions** an IAM user or role can have.
+
+Even if another policy grants additional permissions, actions outside the boundary are denied.
+
+Think of it as a permission "ceiling."
+
+---
+
+## 13. Why are temporary credentials safer than long-lived access keys?
+
+Temporary credentials are safer because they:
+
+- **Expire automatically**, reducing the window of opportunity if they are compromised.
+- **Reduce the impact of credential leaks**, since they become invalid after a short period.
+- **Do not require manual rotation**, as new credentials are generated when needed.
+- **Are issued by AWS Security Token Service (AWS STS)** after assuming an IAM role or through federated access.
+- **Eliminate the need to store long-term access keys** in applications, CI/CD pipelines, or source code.
+
+**Long-lived access keys:**
+
+- Remain valid until they are manually rotated or deleted.
+- Pose a higher security risk if exposed, as they can be misused for an extended period.
+- Require regular rotation and secure storage as a security best practice.
+
+**Key Difference:**  
+Temporary credentials are short-lived and automatically expire, making them significantly more secure than long-lived access keys.
+
+---
+
+## 14. What problem does GitHub OIDC solve?
+
+GitHub OpenID Connect (OIDC):
+
+- Eliminates storing AWS access keys in GitHub Secrets.
+- Allows GitHub Actions to securely request temporary AWS credentials.
+- Improves security by using short-lived credentials.
+
+---
+
+## 15. What does AWS STS provide?
+
+**AWS Security Token Service (STS)** provides temporary security credentials for AWS resources.
+
+Common STS operations:
+
+- `AssumeRole`
+- `AssumeRoleWithWebIdentity`
+- `GetSessionToken`
+- `GetCallerIdentity`
+
+**Benefits:**
+
+- Temporary credentials
+- Cross-account access
+- Federated authentication
+- Improved security
+- No long-term access keys required
+
+---
