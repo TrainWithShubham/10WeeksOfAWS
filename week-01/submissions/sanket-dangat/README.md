@@ -108,6 +108,13 @@ I enabled **Receive CloudWatch billing alerts** in **Billing Preferences**, sele
   - The root user should be used only for account setup and a few critical administrative tasks.
   - MFA should always be enabled on the root account for extra security.
 
+- Why billing should be monitored from Day 1?
+  - Helps avoid unexpected charges.
+  - Keeps AWS spending under control.
+  - Sends alerts when the budget limit is reached.
+  - Helps use AWS resources wisely.
+  - Makes it easier to stay within the Free Tier.
+  
 ---
 
 ## Lab 2 — S3 Read-Only IAM Group and User
