@@ -185,4 +185,5 @@ Bucket Used: aliyas-22-bucket
 **Storing permanent AWS access keys in GitHub Secrets creates risk — if leaked, they remain valid until manually rotated. OIDC removes this risk entirely by using short-lived, automatically expiring credentials generated fresh for every workflow run, tied specifically to my repository. This follows the AWS best practice of avoiding long-lived credentials in favor of temporary, scoped, and auditable access.**
 
  ![oidc-provider](https://github.com/Aliyas-22/aws-week-1-challenge)
+![oidc-task ](Screenshots/oidc-provider.png)
 
