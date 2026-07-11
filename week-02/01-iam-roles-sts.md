@@ -8,9 +8,37 @@ another AWS service without storing permanent credentials.
 Write short answers in your own words:
 
 1. Why should an application avoid storing access keys? -->
+   ```
+   Because if access keys are leaked, anyone can access AWS resources. Temporary credentials are much safer.
+   ```
 2. Who is allowed to assume a role? -->
+   ```
+   Only someone who is trusted.
+   such as
+   EC2
+   Lambda
+   Another IAM User
+   Another AWS Account
+   
+   AWS checks the Trust Policy first
+   ```
+   
 3. What is the role allowed to do after it is assumed? -->
+   ```
+   This is decided by the Permission Policy.
+   The role may be allowed to
+
+    Read S3
+    Write CloudWatch Logs
+    Read Secrets Manager
+    or maybe only
+    List S3 Bucket
+   ```
+   
 4. Why do temporary credentials expire? -->
+   ```
+   becuase This improves security. it only work for a limited time. After it get expire, and become useless.
+   ```
 
 ## IAM Role
 
@@ -135,6 +163,19 @@ policy grants only the actions required on the target service.
 ## Check Your Understanding
 
 1. Does an EC2 trust policy grant permission to read an S3 object?
+   ```
+   no,A trust policy only decides whether EC2 can assume the role. S3 access must be granted by the permission policy
+   ```
+   
 2. What must change if Lambda, rather than EC2, needs to assume the role?
+   ```
+   Update the trust policy to trust the Lambda service (lambda.amazonaws.com) instead of the EC2 service (ec2.amazonaws.com)
+   ```
 3. Why is an instance role safer than storing an IAM user's keys on EC2?
+   ```
+   Because the instance role uses temporary credentials that are automatically rotated and expire, reducing the risk if they're exposed
+   ```
 4. What should happen when temporary credentials expire?
+   ```
+   AWS automatically refreshes them (through the instance profile and AWS SDK/CLI), so applications can continue working without storing permanent access keys
+   ```
