@@ -32,7 +32,6 @@ CLAUDE.md
 
 # Weekly release gate — publish one week at a time.
 # To publish a week, delete its line below, then commit that week + this file.
-week-02/
 week-03/
 week-04/
 week-05/
