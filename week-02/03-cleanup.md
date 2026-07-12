@@ -1,4 +1,4 @@
-# Day 3 Cleanup
+# Week 2 Cleanup
 
 Clean up after collecting your proof so the practice environment stays secure
 and does not create unnecessary cost.
@@ -23,3 +23,17 @@ and does not create unnecessary cost.
 - No access keys were created during the lab.
 
 Add a cleanup note or safe screenshot to your submission.
+
+## Day 4 - Organizations and SCP Cleanup
+
+1. Confirm the successful pre-SCP test bucket was deleted.
+2. The denied post-SCP command should not have created a bucket. Verify before
+   continuing.
+3. Move `CloudAdhar-Dev` back under the organization Root if you need to repeat
+   the practical.
+4. Keep `Dev-Env` and `Deny-S3-Bucket-Creation` for another practice unless the
+   trainer asks you to remove them.
+5. Sign out of the AWS access portal and close the incognito session.
+
+Do not close or remove the member account as cleanup. The correct reversible
+operation for this lab is **Move AWS account**.
