@@ -1,4 +1,4 @@
-# Week 2 - Jul 11 Submission Format
+# Week 2 Submission Format
 
 Create this folder in your fork:
 
@@ -75,3 +75,41 @@ Add your post link.
 
 Hide account IDs when possible. Never submit access keys, secret keys, session
 tokens, SSH private keys, or sensitive object contents.
+
+## Jul 12 - Day 4 Submission
+
+Create a second folder:
+
+```text
+week-02/submissions/YOUR-NAME/day-4-aws-organizations/
+```
+
+Suggested structure:
+
+```text
+day-4-aws-organizations/
+├── README.md
+├── diagrams/
+│   ├── aws-organizations-architecture.drawio
+│   └── permission-flow.png
+├── policies/
+│   └── deny-s3-create-bucket-scp.json
+└── screenshots/
+    ├── organization-tree-masked.png
+    ├── sts-identity-masked.png
+    ├── s3-before-scp.png
+    └── scp-access-denied-masked.png
+```
+
+In your Day 4 README, explain:
+
+- Organization, Root, management account, member account, and OU
+- Why an SCP is a guardrail rather than a permission grant
+- Why IAM Identity Center is preferred over duplicate IAM users
+- The difference between a permission set and an SCP
+- Why S3 creation worked before the account move and failed afterward
+- What you learned about consolidated billing
+
+Mask account IDs, email addresses, portal URLs, organization IDs, and full role
+ARNs before submitting screenshots. Never commit temporary credentials or
+session tokens.

@@ -42,3 +42,31 @@ Rewrite the example in your own voice and add only safe screenshots.
 
 Do not show account IDs, access keys, secret keys, session tokens, private keys,
 or sensitive S3 data.
+
+## Jul 12 - Organizations and Identity Center
+
+Write about:
+
+- Why companies use multiple AWS accounts
+- How OUs group accounts with common controls
+- Why an SCP limits maximum permissions but does not grant access
+- How IAM Identity Center provides temporary AWSReservedSSO sessions
+- Your before-and-after S3 result when the member account moved into `Dev-Env`
+- One benefit of consolidated billing
+
+Suggested structure:
+
+```text
+Day 4 of #10WeeksOfAWS
+
+Today I practiced centralized multi-account governance with AWS Organizations.
+I verified an IAM Identity Center temporary session, then tested S3 bucket
+creation before and after moving a member account into an SCP-controlled OU.
+
+Before the move: [write your result]
+After the move: [write your result]
+
+My key takeaway: an SCP is a guardrail, not a permission grant.
+```
+
+Rewrite it in your own voice and use only masked screenshots.
