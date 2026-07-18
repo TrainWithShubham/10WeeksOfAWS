@@ -1,0 +1,30 @@
+name: AWS OIDC Demo
+
+on:
+  workflow_dispatch:
+
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  aws-oidc-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::128993293245:role/S3-Full-access
+
+      - name: Verify Identity
+        run: aws sts get-caller-identity
+
+      - name: List S3 buckets
+        run: aws s3 ls
+          
+      
