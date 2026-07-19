@@ -1,7 +1,14 @@
-# Week 3 - Amazon VPC
+# Week 3 - Day 5: Amazon VPC Part 1
 
 ## Name
 Sanket Dangat
+
+## Tasks Completed
+- [x] Watched/read the weekly content
+- [x] Completed hands-on labs
+- [x] Added screenshots or proof
+- [ ] Posted on LinkedIn
+- [x] Cleaned up AWS resources
 
 
 ## Architecture
@@ -72,7 +79,7 @@ A subnet is **private** when it:
 
 ---
 
-## Day 5 Result
+## Result
 
 Built a two-AZ VPC with public and private subnets, an Internet Gateway, and dedicated route tables.
 
@@ -141,7 +148,7 @@ Built a two-AZ VPC with public and private subnets, an Internet Gateway, and ded
 
 ## Cleanup
 
-**Day 5 VPC cleanup (in order):**
+**VPC cleanup (in order):**
 1. Disassociated custom route table associations
 2. Deleted the four subnets
 3. Deleted `cloudadhar-public-rt` and `cloudadhar-private-rt`
