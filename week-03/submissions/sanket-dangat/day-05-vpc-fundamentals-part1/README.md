@@ -159,4 +159,4 @@ Built a two-AZ VPC with public and private subnets, an Internet Gateway, and ded
 ---
 
 ## LinkedIn Post
-[LinkedIn Link](https://www.linkedin.com/posts/activity-7485174357267374080-hoc2?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEJuHJYBII9imgLntyUMaz684Imwl2w4XOM)
+[LinkedIn Link](https://www.linkedin.com/posts/activity-7485259098754707456-ZUBo?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEJuHJYBII9imgLntyUMaz684Imwl2w4XOM)
