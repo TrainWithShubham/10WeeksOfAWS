@@ -7,7 +7,7 @@ Sanket Dangat
 - [x] Watched/read the weekly content
 - [x] Completed hands-on labs
 - [x] Added screenshots or proof
-- [ ] Posted on LinkedIn
+- [x] Posted on LinkedIn
 - [x] Cleaned up AWS resources
 
 
@@ -155,3 +155,8 @@ Built a two-AZ VPC with public and private subnets, an Internet Gateway, and ded
 4. Detached `cloudadhar-day5-igw` from the VPC
 5. Deleted `cloudadhar-day5-igw`
 6. Deleted `cloudadhar-day5-vpc`
+
+---
+
+## LinkedIn Post
+[LinkedIn Link](https://www.linkedin.com/posts/activity-7485174357267374080-hoc2?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEJuHJYBII9imgLntyUMaz684Imwl2w4XOM)
