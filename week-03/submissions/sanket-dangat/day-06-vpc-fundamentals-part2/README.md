@@ -17,7 +17,7 @@ Sanket Dangat
 
 ## Architecture
 
-
+![VPC Extend Architecture](diagrams/week-03-day6-extend-vpc.gif)
 
 ---
 
