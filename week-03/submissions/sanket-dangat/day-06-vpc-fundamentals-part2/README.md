@@ -10,7 +10,7 @@ Sanket Dangat
 - [x] Extended the VPC
 - [x] Completed hands-on labs
 - [x] Added screenshots or proof
-- [ ] Posted on LinkedIn
+- [x] Posted on LinkedIn
 - [x] Cleaned up AWS resources
 
 ---
@@ -218,3 +218,8 @@ Extended the Day 5 VPC by adding secure outbound internet access, private AWS se
 8. Restore the original NACL association.
 9. Delete the custom NACL.
 10. Remove temporary route tables and Security Groups.
+
+---
+
+## LinkedIn Post
+[LinkedIn Link](https://www.linkedin.com/posts/activity-7486273013462544386-wPFP?utm_source=share&utm_medium=member_desktop&rcm=ACoAAEJuHJYBII9imgLntyUMaz684Imwl2w4XOM)
