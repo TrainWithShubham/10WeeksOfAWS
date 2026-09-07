@@ -1,0 +1,1127 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CloudAdhar Day 19 complete observable workload. Creates or reuses an SNS
+  alert path and can create the Amazon Q Developer Slack configuration,
+  plus a secure Auto Scaling web server,
+  retained S3 storage, CloudWatch logs and dashboard, scaling, alarms, and
+  EventBridge notifications for stack, compute, storage and deletion activity.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network
+        Parameters:
+          - VpcId
+          - PublicSubnetIds
+          - AllowedHttpCidr
+      - Label:
+          default: Compute
+        Parameters:
+          - InstanceType
+          - LatestAmiId
+      - Label:
+          default: Monitoring and notifications
+        Parameters:
+          - SlackIntegrationMode
+          - ExistingAlertTopicArn
+          - AlertTopicName
+          - SlackWorkspaceId
+          - SlackChannelId
+          - CreateGuardDutyNotificationRule
+          - LogRetentionDays
+      - Label:
+          default: General
+        Parameters:
+          - Environment
+    ParameterLabels:
+      SlackChannelId:
+        default: Slack channel ID for cloudadhar-aws-alerts
+      SlackIntegrationMode:
+        default: Slack integration ownership mode
+      ExistingAlertTopicArn:
+        default: Existing SNS topic ARN mapped to Slack
+      CreateGuardDutyNotificationRule:
+        default: Create GuardDuty high-severity notification rule
+      PublicSubnetIds:
+        default: Public subnet IDs
+
+Parameters:
+  Environment:
+    Type: String
+    Default: demo
+    AllowedValues:
+      - demo
+      - dev
+      - test
+      - prod
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC containing the selected public subnets.
+
+  PublicSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      One or more public subnets with a route to an internet gateway. Instances
+      receive public IP addresses for the web demonstration and AWS API access.
+
+  AllowedHttpCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: IPv4 CIDR allowed to reach the demonstration web page on port 80.
+    AllowedPattern: '^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$'
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    Description: Instance type compatible with the default x86_64 Amazon Linux 2023 AMI.
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Public SSM parameter resolving to the latest Amazon Linux 2023 AMI.
+
+  SlackIntegrationMode:
+    Type: String
+    Default: UseExisting
+    AllowedValues:
+      - CreateNew
+      - UseExisting
+    Description: >-
+      CreateNew creates the SNS topic and Amazon Q Slack channel configuration.
+      UseExisting reuses an SNS topic already mapped to an existing Amazon Q
+      configuration and is recommended after completing the manual integration.
+
+  ExistingAlertTopicArn:
+    Type: String
+    Default: ""
+    Description: >-
+      Required only when SlackIntegrationMode is UseExisting. Paste the ARN of
+      the existing SNS topic already mapped to the Slack channel configuration.
+    AllowedPattern: '^$|^arn:(aws|aws-cn|aws-us-gov):sns:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]{1,256}$'
+
+  AlertTopicName:
+    Type: String
+    Default: cloudadhar-day19-slack-alerts
+    Description: Name of the standard SNS topic created for Slack notifications.
+    AllowedPattern: '^[A-Za-z0-9_-]{1,256}$'
+
+  SlackWorkspaceId:
+    Type: String
+    Default: T0C00G2J9HS
+    Description: Slack workspace ID already authorized in Amazon Q Developer in chat applications.
+    AllowedPattern: '^[0-9A-Z]{1,255}$'
+
+  SlackChannelId:
+    Type: String
+    Default: C0C0R7WJS2C
+    Description: >-
+      Slack channel ID, not the channel name. In Slack, right-click the channel,
+      copy its link, and use the final alphanumeric segment.
+    AllowedPattern: '^[A-Za-z0-9]{1,256}$'
+
+  CreateGuardDutyNotificationRule:
+    Type: String
+    Default: "No"
+    AllowedValues:
+      - "Yes"
+      - "No"
+    Description: >-
+      Select No when a manually created GuardDuty EventBridge rule already sends
+      findings to this Slack topic. Select Yes when CloudFormation should create
+      the severity 7-or-higher rule.
+
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    AllowedValues:
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+    Description: CloudWatch Logs retention period.
+
+Rules:
+  ExistingTopicRequiredWhenReusingSlack:
+    RuleCondition: !Equals
+      - !Ref SlackIntegrationMode
+      - UseExisting
+    Assertions:
+      - Assert: !Not
+          - !Equals
+            - !Ref ExistingAlertTopicArn
+            - ""
+        AssertDescription: >-
+          ExistingAlertTopicArn must be supplied when SlackIntegrationMode is UseExisting.
+
+Conditions:
+  CreateNewSlackIntegration: !Equals
+    - !Ref SlackIntegrationMode
+    - CreateNew
+  DeployGuardDutyNotificationRule: !Equals
+    - !Ref CreateGuardDutyNotificationRule
+    - "Yes"
+
+Resources:
+  SlackAlertTopic:
+    Type: AWS::SNS::Topic
+    Condition: CreateNewSlackIntegration
+    Properties:
+      TopicName: !Ref AlertTopicName
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  AmazonQChannelRole:
+    Type: AWS::IAM::Role
+    Condition: CreateNewSlackIntegration
+    Properties:
+      Description: Read-only channel role for the Day 19 Amazon Q Slack integration.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: chatbot.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  SlackChannelConfiguration:
+    Type: AWS::Chatbot::SlackChannelConfiguration
+    Condition: CreateNewSlackIntegration
+    Properties:
+      ConfigurationName: !Sub ${AWS::StackName}-slack
+      IamRoleArn: !GetAtt AmazonQChannelRole.Arn
+      LoggingLevel: ERROR
+      SlackChannelId: !Ref SlackChannelId
+      SlackWorkspaceId: !Ref SlackWorkspaceId
+      SnsTopicArns:
+        - !Ref SlackAlertTopic
+      GuardrailPolicies:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/ReadOnlyAccess
+      UserRoleRequired: false
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  EC2LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /cloudadhar/day19/${AWS::StackName}/ec2
+      RetentionInDays: !Ref LogRetentionDays
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows the Auto Scaling instances to use SSM and publish CloudWatch telemetry.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/CloudWatchAgentServerPolicy
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP-only security group for the Day 19 observable web workload.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - Description: HTTP access for the demonstration web page
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllowedHttpCidr
+      SecurityGroupEgress:
+        - Description: Required for package installation, SSM and CloudWatch APIs
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-web-sg
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  EventBridgePublishRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows this stack's EventBridge rules to publish to the Slack alert topic.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AWS::StackName}-*
+      Policies:
+        - PolicyName: PublishOnlyToConfiguredAlertTopic
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: sns:Publish
+                Resource: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  AutoScalingLifecycleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-asg-lifecycle
+      Description: Sends Auto Scaling launch and termination outcomes to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.autoscaling
+        detail-type:
+          - EC2 Instance Launch Successful
+          - EC2 Instance Launch Unsuccessful
+          - EC2 Instance Terminate Successful
+          - EC2 Instance Terminate Unsuccessful
+        detail:
+          AutoScalingGroupName:
+            - prefix: !Sub ${AWS::StackName}-
+      Targets:
+        - Id: AutoScalingLifecycleToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              asgName: $.detail.AutoScalingGroupName
+              cause: $.detail.Cause
+              eventId: $.id
+              eventTime: $.time
+              eventType: $.detail-type
+              instanceId: $.detail.EC2InstanceId
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "Auto Scaling lifecycle event",
+                  "description": "*Event:* <eventType>\n*Auto Scaling group:* <asgName>\n*Instance:* <instanceId>\n*Cause:* <cause>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "For unsuccessful events, inspect Auto Scaling activity history and launch-template permissions.",
+                    "For unexpected termination, correlate the instance ID with CloudTrail."
+                  ],
+                  "keywords": ["EC2", "AutoScaling", "Operations"]
+                }
+              }
+
+  WebLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub ${AWS::StackName}-launch-template
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmiId
+        InstanceType: !Ref InstanceType
+        IamInstanceProfile:
+          Arn: !GetAtt EC2InstanceProfile.Arn
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+          HttpPutResponseHopLimit: 1
+          InstanceMetadataTags: enabled
+        Monitoring:
+          Enabled: true
+        NetworkInterfaces:
+          - AssociatePublicIpAddress: true
+            DeleteOnTermination: true
+            DeviceIndex: 0
+            Groups:
+              - !GetAtt WebSecurityGroup.GroupId
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 8
+              VolumeType: gp3
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${AWS::StackName}-web
+              - Key: Project
+                Value: CloudAdhar
+              - Key: Environment
+                Value: !Ref Environment
+          - ResourceType: volume
+            Tags:
+              - Key: Project
+                Value: CloudAdhar
+              - Key: Environment
+                Value: !Ref Environment
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -euxo pipefail
+
+            dnf install -y nginx amazon-cloudwatch-agent || {
+              dnf install -y nginx wget
+              rpm -Uvh https://amazoncloudwatch-agent.s3.amazonaws.com/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm
+            }
+
+            cat > /usr/share/nginx/html/index.html <<'HTML'
+            <!doctype html>
+            <html lang="en">
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1">
+                <title>CloudAdhar Day 19</title>
+                <style>
+                  body { font-family: Arial, sans-serif; max-width: 760px; margin: 80px auto; padding: 24px; color: #102a43; }
+                  .card { border: 1px solid #cbd5e1; border-radius: 14px; padding: 30px; box-shadow: 0 8px 24px rgba(15,23,42,.08); }
+                  h1 { color: #0369a1; }
+                  code { background: #e0f2fe; padding: 3px 7px; border-radius: 5px; }
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <h1>CloudAdhar Day 19</h1>
+                  <p>EC2 created through an Auto Scaling group using AWS CloudFormation.</p>
+                  <p>Stack: <code>${AWS::StackName}</code></p>
+                  <p>Environment: <code>${Environment}</code></p>
+                </div>
+              </body>
+            </html>
+            HTML
+
+            systemctl enable --now nginx
+            curl --silent --output /dev/null http://127.0.0.1/
+
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWCONFIG'
+            {
+              "agent": {
+                "metrics_collection_interval": 60,
+                "run_as_user": "root"
+              },
+              "metrics": {
+                "append_dimensions": {
+                  "AutoScalingGroupName": "${!aws:AutoScalingGroupName}",
+                  "InstanceId": "${!aws:InstanceId}"
+                },
+                "metrics_collected": {
+                  "disk": {
+                    "measurement": ["used_percent"],
+                    "metrics_collection_interval": 60,
+                    "resources": ["/"]
+                  },
+                  "mem": {
+                    "measurement": ["mem_used_percent"],
+                    "metrics_collection_interval": 60
+                  }
+                }
+              },
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      {
+                        "file_path": "/var/log/cloud-init-output.log",
+                        "log_group_name": "${EC2LogGroup}",
+                        "log_stream_name": "{instance_id}/cloud-init"
+                      },
+                      {
+                        "file_path": "/var/log/nginx/access.log",
+                        "log_group_name": "${EC2LogGroup}",
+                        "log_stream_name": "{instance_id}/nginx-access"
+                      },
+                      {
+                        "file_path": "/var/log/nginx/error.log",
+                        "log_group_name": "${EC2LogGroup}",
+                        "log_stream_name": "{instance_id}/nginx-error"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+            CWCONFIG
+
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config \
+              -m ec2 \
+              -s \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+  WebAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - AutoScalingLifecycleRule
+      - CriticalDeletionRule
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MinInstancesInService: 1
+        MaxBatchSize: 1
+        PauseTime: PT5M
+        WaitOnResourceSignals: false
+    Properties:
+      AutoScalingGroupName: !Sub ${AWS::StackName}-asg
+      VPCZoneIdentifier: !Ref PublicSubnetIds
+      MinSize: "1"
+      DesiredCapacity: "1"
+      MaxSize: "2"
+      DefaultInstanceWarmup: 120
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 180
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebLaunchTemplate
+        Version: !GetAtt WebLaunchTemplate.LatestVersionNumber
+      MetricsCollection:
+        - Granularity: 1Minute
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-web
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: CloudAdhar
+          PropagateAtLaunch: true
+        - Key: Environment
+          Value: !Ref Environment
+          PropagateAtLaunch: true
+
+  CpuTargetTrackingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WebAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      EstimatedInstanceWarmup: 120
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 50.0
+
+  ASGCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-asg-no-inservice-instances
+      AlarmDescription: Auto Scaling group has no InService instances.
+      Namespace: AWS/AutoScaling
+      MetricName: GroupInServiceInstances
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref WebAutoScalingGroup
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 2
+      DatapointsToAlarm: 2
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+      OKActions:
+        - !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+
+  ApplicationFailuresAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub ${AWS::StackName}-application-failures
+      AlarmDescription: Test alarm for the learner-generated CloudAdhar/Day19 metric.
+      Namespace: CloudAdhar/Day19
+      MetricName: ApplicationFailures
+      Dimensions:
+        - Name: Environment
+          Value: !Ref Environment
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      DatapointsToAlarm: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+      OKActions:
+        - !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      NotificationConfiguration:
+        EventBridgeConfiguration:
+          EventBridgeEnabled: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteMultipartUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 7
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: DataClassification
+          Value: Demo
+
+  S3ObjectActivityRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-s3-object-activity
+      Description: Sends object-created and object-deleted events for the retained data bucket.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - Object Created
+          - Object Deleted
+        detail:
+          bucket:
+            name:
+              - !Ref DataBucket
+      Targets:
+        - Id: S3ObjectActivityToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              bucket: $.detail.bucket.name
+              eventId: $.id
+              eventTime: $.time
+              eventType: $.detail-type
+              key: $.detail.object.key
+              reason: $.detail.reason
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "S3 object activity detected",
+                  "description": "*Event:* <eventType>\n*Bucket:* <bucket>\n*Object:* <key>\n*Reason:* <reason>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "Confirm that the object operation was expected.",
+                    "Use CloudTrail S3 data events when actor-level object auditing is required."
+                  ],
+                  "keywords": ["S3", "Data", "ObjectActivity"]
+                }
+              }
+
+  CloudTrailAuditLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /cloudadhar/day19/${AWS::StackName}/cloudtrail
+      RetentionInDays: !Ref LogRetentionDays
+
+  CloudTrailToLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows CloudTrail to deliver events to the stack CloudWatch log group.
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: WriteOnlyToCloudTrailLogGroup
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !GetAtt CloudTrailAuditLogGroup.Arn
+
+  CloudTrailAuditBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: RetainAuditLogsForOneYear
+            Status: Enabled
+            ExpirationInDays: 365
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: DataClassification
+          Value: Audit
+
+  CloudTrailAuditBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref CloudTrailAuditBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AWSCloudTrailAclCheck
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt CloudTrailAuditBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-trail
+          - Sid: AWSCloudTrailWrite
+            Effect: Allow
+            Principal:
+              Service: cloudtrail.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub ${CloudTrailAuditBucket.Arn}/AWSLogs/${AWS::AccountId}/*
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceArn: !Sub arn:${AWS::Partition}:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/${AWS::StackName}-trail
+
+  ManagementAndS3DataTrail:
+    Type: AWS::CloudTrail::Trail
+    DependsOn:
+      - CloudTrailAuditBucketPolicy
+    Properties:
+      TrailName: !Sub ${AWS::StackName}-trail
+      S3BucketName: !Ref CloudTrailAuditBucket
+      CloudWatchLogsLogGroupArn: !GetAtt CloudTrailAuditLogGroup.Arn
+      CloudWatchLogsRoleArn: !GetAtt CloudTrailToLogsRole.Arn
+      EnableLogFileValidation: true
+      IncludeGlobalServiceEvents: true
+      IsLogging: true
+      IsMultiRegionTrail: true
+      EventSelectors:
+        - IncludeManagementEvents: true
+          ReadWriteType: All
+          DataResources:
+            - Type: AWS::S3::Object
+              Values:
+                - !Sub ${DataBucket.Arn}/
+      Tags:
+        - Key: Project
+          Value: CloudAdhar
+        - Key: Environment
+          Value: !Ref Environment
+
+  S3DownloadAuditRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-s3-download-audit
+      Description: Sends audited GetObject calls for the demo bucket to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.s3
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventSource:
+            - s3.amazonaws.com
+          eventName:
+            - GetObject
+          requestParameters:
+            bucketName:
+              - !Ref DataBucket
+      Targets:
+        - Id: S3DownloadToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              actor: $.detail.userIdentity.arn
+              bucket: $.detail.requestParameters.bucketName
+              eventId: $.id
+              eventTime: $.detail.eventTime
+              key: $.detail.requestParameters.key
+              sourceIp: $.detail.sourceIPAddress
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "S3 object download audited",
+                  "description": "*Actor:* <actor>\n*Bucket:* <bucket>\n*Object:* <key>\n*Source IP:* <sourceIp>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "Confirm that the download was authorized.",
+                    "Use the CloudTrail event ID for investigation."
+                  ],
+                  "keywords": ["S3", "CloudTrail", "DataEvent"]
+                }
+              }
+
+  StackStatusRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-stack-status
+      Description: Sends this stack's CloudFormation status changes to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.cloudformation
+        detail-type:
+          - CloudFormation Stack Status Change
+        detail:
+          stack-id:
+            - !Ref AWS::StackId
+      Targets:
+        - Id: StackStatusToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              eventId: $.id
+              eventTime: $.time
+              stackId: $.detail.stack-id
+              status: $.detail.status-details.status
+              statusReason: $.detail.status-details.status-reason
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "CloudFormation stack status changed",
+                  "description": "*Stack:* <stackId>\n*Status:* <status>\n*Reason:* <statusReason>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "For rollback or failure states, inspect CloudFormation stack events.",
+                    "For unexpected deletion, correlate with the critical API activity alert."
+                  ],
+                  "keywords": ["CloudFormation", "Stack", "Deployment"]
+                }
+              }
+
+  CriticalDeletionRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-critical-api-activity
+      Description: Sends selected high-value create, update and delete API calls with actor details to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          eventName:
+            - CreateBucket
+            - CreateStack
+            - DeleteBucket
+            - DeleteRole
+            - DeleteSecret
+            - DeleteStack
+            - DeleteUser
+            - RunInstances
+            - ScheduleKeyDeletion
+            - TerminateInstances
+            - UpdateStack
+      Targets:
+        - Id: CriticalDeletionToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              actor: $.detail.userIdentity.arn
+              eventId: $.id
+              eventName: $.detail.eventName
+              eventSource: $.detail.eventSource
+              eventTime: $.detail.eventTime
+              sourceIp: $.detail.sourceIPAddress
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "High-value AWS API activity detected",
+                  "description": "*Action:* <eventName>\n*Service:* <eventSource>\n*Actor:* <actor>\n*Source IP:* <sourceIp>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "Confirm that the action was authorized by an approved change.",
+                    "Open CloudTrail Event history and investigate the matching event."
+                  ],
+                  "keywords": ["CloudTrail", "Security", "Deletion"]
+                }
+              }
+
+  DeniedApiCallRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub ${AWS::StackName}-denied-api-calls
+      Description: Sends CloudTrail API authorization failures to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        detail-type:
+          - AWS API Call via CloudTrail
+        detail:
+          errorCode:
+            - prefix: AccessDenied
+            - UnauthorizedOperation
+      Targets:
+        - Id: DeniedApiCallToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              actor: $.detail.userIdentity.arn
+              errorCode: $.detail.errorCode
+              errorMessage: $.detail.errorMessage
+              eventId: $.id
+              eventName: $.detail.eventName
+              eventSource: $.detail.eventSource
+              eventTime: $.detail.eventTime
+              sourceIp: $.detail.sourceIPAddress
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "Denied AWS API call detected",
+                  "description": "*Action:* <eventName>\n*Service:* <eventSource>\n*Actor:* <actor>\n*Source IP:* <sourceIp>\n*Error:* <errorCode> - <errorMessage>\n*Time:* <eventTime>",
+                  "nextSteps": [
+                    "Determine whether this was a user mistake, missing permission or malicious attempt.",
+                    "Review the principal's recent CloudTrail activity before changing permissions."
+                  ],
+                  "keywords": ["CloudTrail", "AccessDenied", "Security"]
+                }
+              }
+
+  GuardDutyHighSeverityRule:
+    Type: AWS::Events::Rule
+    Condition: DeployGuardDutyNotificationRule
+    Properties:
+      Name: !Sub ${AWS::StackName}-guardduty-high
+      Description: Sends high and critical GuardDuty findings to Slack.
+      State: ENABLED
+      EventBusName: default
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+        detail:
+          severity:
+            - numeric:
+                - ">="
+                - 7
+      Targets:
+        - Id: GuardDutyHighToSlack
+          Arn: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+          RoleArn: !GetAtt EventBridgePublishRole.Arn
+          InputTransformer:
+            InputPathsMap:
+              account: $.account
+              eventId: $.id
+              findingId: $.detail.id
+              findingType: $.detail.type
+              region: $.region
+              resourceType: $.detail.resource.resourceType
+              severity: $.detail.severity
+              title: $.detail.title
+            InputTemplate: |
+              {
+                "version": "1.0",
+                "source": "custom",
+                "id": <eventId>,
+                "content": {
+                  "textType": "client-markdown",
+                  "title": "High-severity GuardDuty finding",
+                  "description": "*Finding:* <title>\n*Type:* <findingType>\n*Severity:* <severity>\n*Resource type:* <resourceType>\n*Region:* <region>\n*Account:* <account>\n*Finding ID:* <findingId>",
+                  "nextSteps": [
+                    "Open the GuardDuty finding and validate the affected resource and activity.",
+                    "Contain the resource according to the incident-response runbook."
+                  ],
+                  "keywords": ["GuardDuty", "Security", "HighSeverity"]
+                }
+              }
+
+  OperationsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Sub ${AWS::StackName}-operations
+      DashboardBody: !Sub |
+        {
+          "start": "-PT3H",
+          "periodOverride": "inherit",
+          "widgets": [
+            {
+              "type": "metric",
+              "x": 0,
+              "y": 0,
+              "width": 24,
+              "height": 7,
+              "properties": {
+                "title": "Auto Scaling capacity",
+                "region": "${AWS::Region}",
+                "period": 60,
+                "stat": "Average",
+                "metrics": [
+                  ["AWS/AutoScaling", "GroupDesiredCapacity", "AutoScalingGroupName", "${WebAutoScalingGroup}"],
+                  [".", "GroupInServiceInstances", ".", "."],
+                  [".", "GroupTotalInstances", ".", "."]
+                ]
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 7,
+              "width": 24,
+              "height": 8,
+              "properties": {
+                "title": "Recent EC2 operating-system and NGINX logs",
+                "region": "${AWS::Region}",
+                "view": "table",
+                "query": "SOURCE '${EC2LogGroup}' | fields @timestamp, @logStream, @message | sort @timestamp desc | limit 50"
+              }
+            },
+            {
+              "type": "log",
+              "x": 0,
+              "y": 15,
+              "width": 24,
+              "height": 8,
+              "properties": {
+                "title": "Recent CloudTrail events",
+                "region": "${AWS::Region}",
+                "view": "table",
+                "query": "SOURCE '${CloudTrailAuditLogGroup}' | fields @timestamp, eventName, eventSource, userIdentity.arn, sourceIPAddress | sort @timestamp desc | limit 50"
+              }
+            }
+          ]
+        }
+
+Outputs:
+  AutoScalingGroupName:
+    Description: Auto Scaling group created by this stack.
+    Value: !Ref WebAutoScalingGroup
+
+  DataBucketName:
+    Description: Retained private S3 bucket with EventBridge notifications enabled.
+    Value: !Ref DataBucket
+
+  EC2LogGroupName:
+    Description: CloudWatch log group receiving EC2 and NGINX logs.
+    Value: !Ref EC2LogGroup
+
+  OperationsDashboardName:
+    Description: CloudWatch operations dashboard.
+    Value: !Ref OperationsDashboard
+
+  ApplicationFailuresAlarmName:
+    Description: Test alarm for the CloudAdhar/Day19 ApplicationFailures metric.
+    Value: !Ref ApplicationFailuresAlarm
+
+  SecurityGroupId:
+    Description: HTTP-only security group used by the Auto Scaling instances.
+    Value: !GetAtt WebSecurityGroup.GroupId
+
+  SessionManagerConsoleUrl:
+    Description: Use Systems Manager Session Manager instead of opening SSH.
+    Value: !Sub https://${AWS::Region}.console.aws.amazon.com/systems-manager/session-manager/start-session?region=${AWS::Region}
+
+  AlertTopicArn:
+    Description: SNS topic used by alarms, EventBridge and Amazon Q Developer.
+    Value: !If [CreateNewSlackIntegration, !Ref SlackAlertTopic, !Ref ExistingAlertTopicArn]
+
+  SlackIntegrationModeUsed:
+    Description: Indicates whether this stack created or reused the SNS-to-Slack integration.
+    Value: !Ref SlackIntegrationMode
+
+  GuardDutyNotificationRuleRequested:
+    Description: Indicates whether this stack was asked to create the GuardDuty notification rule.
+    Value: !Ref CreateGuardDutyNotificationRule
+
+  SlackConfigurationArn:
+    Condition: CreateNewSlackIntegration
+    Description: Amazon Q Developer Slack channel configuration.
+    Value: !Ref SlackChannelConfiguration
+
+  CloudTrailName:
+    Description: Multi-Region trail recording management events and demo-bucket S3 object data events.
+    Value: !Ref ManagementAndS3DataTrail
+
+  CloudTrailAuditBucketName:
+    Description: Retained private bucket containing CloudTrail log files.
+    Value: !Ref CloudTrailAuditBucket
