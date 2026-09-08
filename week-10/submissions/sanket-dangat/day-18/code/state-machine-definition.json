@@ -1,0 +1,57 @@
+{
+  "Comment": "Day 18 order processing workflow",
+  "StartAt": "ProcessOrder",
+  "States": {
+    "ProcessOrder": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "cloudadhar-order-handler-day18",
+        "Payload.$": "$"
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "States.TaskFailed"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 2,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "Next": "TechnicalFailure"
+        }
+      ],
+      "Next": "CheckOrderStatus"
+    },
+    "CheckOrderStatus": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Payload.status",
+          "StringEquals": "ACCEPTED",
+          "Next": "OrderAccepted"
+        }
+      ],
+      "Default": "OrderRejected"
+    },
+    "OrderAccepted": {
+      "Type": "Succeed"
+    },
+    "OrderRejected": {
+      "Type": "Fail",
+      "Error": "OrderRejected",
+      "Cause": "Order was rejected by business validation"
+    },
+    "TechnicalFailure": {
+      "Type": "Fail",
+      "Error": "TechnicalFailure",
+      "Cause": "Lambda failed after retries were exhausted"
+    }
+  }
+}
