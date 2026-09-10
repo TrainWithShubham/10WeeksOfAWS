@@ -1,0 +1,15 @@
+name: CloudAdharNginxTest
+description: Verify nginx on the Image Builder test instance.
+schemaVersion: 1.0
+
+phases:
+  - name: test
+    steps:
+      - name: TestNginxImage
+        action: ExecuteBash
+        inputs:
+          commands:
+            - systemctl is-enabled nginx
+            - systemctl start nginx
+            - systemctl is-active nginx
+            - curl -fsS http://localhost | grep -q "CloudAdhar EC2 Image Builder"
