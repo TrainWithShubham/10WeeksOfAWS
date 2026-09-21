@@ -1,0 +1,974 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  CloudAdhar Day 18 end-to-end order application. Creates an EC2-hosted UI,
+  API Gateway HTTP API, Lambda functions, a Standard Step Functions workflow,
+  DynamoDB order storage, CloudWatch Logs permissions, and least-privilege IAM roles.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - test
+      - prod
+    Description: Deployment environment used in resource names and tags.
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC in which the EC2 web server will be created.
+
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: >-
+      Public subnet in the selected VPC. Its route table must have a route to an
+      internet gateway so the UI receives a reachable public address.
+
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+    Description: EC2 instance type for the demonstration web server.
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+    Description: Latest Amazon Linux 2023 x86_64 AMI from the public SSM parameter.
+
+  AllowedHttpCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: ^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/(?:[0-9]|[12][0-9]|3[0-2])$
+    ConstraintDescription: Enter an IPv4 CIDR such as 203.0.113.10/32.
+    Description: >-
+      IPv4 CIDR allowed to open the demo UI on port 80. Use your-public-IP/32
+      when possible; 0.0.0.0/0 is convenient only for a short-lived classroom lab.
+
+Resources:
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      TableName: !Sub cloudadhar-orders-${Environment}-iac-day18
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: orderId
+          KeyType: HASH
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  ValidateOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+
+  OrderWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: UpdateOrderStatus
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt OrdersTable.Arn
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+
+  GetOrderStatusRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadOrderStatus
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !GetAtt OrdersTable.Arn
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+
+  SubmitOrderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - !Sub arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: SubmitOrder
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt OrdersTable.Arn
+              - Effect: Allow
+                Action:
+                  - states:StartExecution
+                Resource: !Sub >-
+                  arn:${AWS::Partition}:states:${AWS::Region}:${AWS::AccountId}:stateMachine:cloudadhar-order-workflow-${Environment}-iac-day18
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+
+  ValidateOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub cloudadhar-validate-order-${Environment}-iac-day18
+      Description: Validates an order before the workflow processes it.
+      Runtime: python3.14
+      Handler: index.lambda_handler
+      Role: !GetAtt ValidateOrderRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def lambda_handler(event, context):
+              if event.get("simulateFailure") is True:
+                  raise RuntimeError("Simulated technical failure for retry and catch demonstration")
+
+              order_id = str(event.get("orderId", "")).strip()
+              amount = event.get("amount")
+
+              if not order_id:
+                  return {
+                      "orderId": order_id,
+                      "amount": amount,
+                      "status": "REJECTED",
+                      "reason": "orderId is required"
+                  }
+
+              if not isinstance(amount, (int, float)) or isinstance(amount, bool) or amount <= 0:
+                  return {
+                      "orderId": order_id,
+                      "amount": amount,
+                      "status": "REJECTED",
+                      "reason": "Amount must be greater than zero"
+                  }
+
+              return {
+                  "orderId": order_id,
+                  "amount": amount,
+                  "status": "ACCEPTED"
+              }
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  ProcessOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub cloudadhar-process-order-${Environment}-iac-day18
+      Description: Performs the order business step and marks the order complete.
+      Runtime: python3.14
+      Handler: index.lambda_handler
+      Role: !GetAtt OrderWorkerRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref OrdersTable
+      Code:
+        ZipFile: |
+          import os
+          from datetime import datetime, timezone
+          import boto3
+
+          table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
+
+          def lambda_handler(event, context):
+              order_id = event["orderId"]
+              now = datetime.now(timezone.utc).isoformat()
+              table.update_item(
+                  Key={"orderId": order_id},
+                  UpdateExpression="SET #status = :status, updatedAt = :updated",
+                  ExpressionAttributeNames={"#status": "status"},
+                  ExpressionAttributeValues={
+                      ":status": "COMPLETED",
+                      ":updated": now
+                  }
+              )
+              return {
+                  "orderId": order_id,
+                  "amount": event["amount"],
+                  "status": "COMPLETED",
+                  "message": "Order processed successfully"
+              }
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  NotifyOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub cloudadhar-notify-order-${Environment}-iac-day18
+      Description: Demonstrates a final notification step in the workflow.
+      Runtime: python3.14
+      Handler: index.lambda_handler
+      Role: !GetAtt ValidateOrderRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Code:
+        ZipFile: |
+          import json
+
+          def lambda_handler(event, context):
+              print(json.dumps({
+                  "notification": "ORDER_COMPLETED",
+                  "orderId": event.get("orderId")
+              }))
+              return event
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  StepFunctionsExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - states.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: RunOrderWorkflow
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt ValidateOrderFunction.Arn
+                  - !GetAtt ProcessOrderFunction.Arn
+                  - !GetAtt NotifyOrderFunction.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt OrdersTable.Arn
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+
+  OrderStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: !Sub cloudadhar-order-workflow-${Environment}-iac-day18
+      StateMachineType: STANDARD
+      RoleArn: !GetAtt StepFunctionsExecutionRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "CloudAdhar Day 18 order processing workflow",
+          "StartAt": "ValidateOrder",
+          "States": {
+            "ValidateOrder": {
+              "Type": "Task",
+              "Resource": "arn:${AWS::Partition}:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ValidateOrderFunction.Arn}",
+                "Payload.$": "$"
+              },
+              "OutputPath": "$.Payload",
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                    "States.TaskFailed"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "MarkTechnicalFailure"
+                }
+              ],
+              "Next": "CheckOrderStatus"
+            },
+            "CheckOrderStatus": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.status",
+                  "StringEquals": "ACCEPTED",
+                  "Next": "ProcessOrder"
+                }
+              ],
+              "Default": "MarkRejected"
+            },
+            "ProcessOrder": {
+              "Type": "Task",
+              "Resource": "arn:${AWS::Partition}:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${ProcessOrderFunction.Arn}",
+                "Payload.$": "$"
+              },
+              "OutputPath": "$.Payload",
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException",
+                    "States.TaskFailed"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "MarkTechnicalFailure"
+                }
+              ],
+              "Next": "NotifyCustomer"
+            },
+            "NotifyCustomer": {
+              "Type": "Task",
+              "Resource": "arn:${AWS::Partition}:states:::lambda:invoke",
+              "Parameters": {
+                "FunctionName": "${NotifyOrderFunction.Arn}",
+                "Payload.$": "$"
+              },
+              "OutputPath": "$.Payload",
+              "Retry": [
+                {
+                  "ErrorEquals": [
+                    "Lambda.ServiceException",
+                    "Lambda.AWSLambdaException",
+                    "Lambda.SdkClientException"
+                  ],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "ResultPath": "$.error",
+                  "Next": "MarkTechnicalFailure"
+                }
+              ],
+              "Next": "OrderCompleted"
+            },
+            "MarkRejected": {
+              "Type": "Task",
+              "Resource": "arn:${AWS::Partition}:states:::dynamodb:updateItem",
+              "Parameters": {
+                "TableName": "${OrdersTable}",
+                "Key": {
+                  "orderId": {"S.$": "$.orderId"}
+                },
+                "UpdateExpression": "SET #status = :status, reason = :reason, updatedAt = :updated",
+                "ExpressionAttributeNames": {
+                  "#status": "status"
+                },
+                "ExpressionAttributeValues": {
+                  ":status": {"S": "REJECTED"},
+                  ":reason": {"S.$": "$.reason"},
+                  ":updated": {"S.$": "$$.State.EnteredTime"}
+                }
+              },
+              "ResultPath": null,
+              "Next": "OrderRejected"
+            },
+            "MarkTechnicalFailure": {
+              "Type": "Task",
+              "Resource": "arn:${AWS::Partition}:states:::dynamodb:updateItem",
+              "Parameters": {
+                "TableName": "${OrdersTable}",
+                "Key": {
+                  "orderId": {"S.$": "$.orderId"}
+                },
+                "UpdateExpression": "SET #status = :status, reason = :reason, updatedAt = :updated",
+                "ExpressionAttributeNames": {
+                  "#status": "status"
+                },
+                "ExpressionAttributeValues": {
+                  ":status": {"S": "FAILED"},
+                  ":reason": {"S": "Lambda processing failed after retries"},
+                  ":updated": {"S.$": "$$.State.EnteredTime"}
+                }
+              },
+              "ResultPath": null,
+              "Next": "TechnicalFailure"
+            },
+            "OrderCompleted": {
+              "Type": "Succeed"
+            },
+            "OrderRejected": {
+              "Type": "Fail",
+              "Error": "OrderRejected",
+              "Cause": "Order failed business validation"
+            },
+            "TechnicalFailure": {
+              "Type": "Fail",
+              "Error": "TechnicalFailure",
+              "Cause": "Lambda processing failed after retries"
+            }
+          }
+        }
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  SubmitOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub cloudadhar-submit-order-${Environment}-iac-day18
+      Description: Receives API requests, stores orders, and starts the Standard workflow.
+      Runtime: python3.14
+      Handler: index.lambda_handler
+      Role: !GetAtt SubmitOrderRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 15
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref OrdersTable
+          STATE_MACHINE_ARN: !Ref OrderStateMachine
+      Code:
+        ZipFile: |
+          import json
+          import math
+          import os
+          import re
+          import uuid
+          from datetime import datetime, timezone
+          from decimal import Decimal
+          import boto3
+
+          table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
+          step_functions = boto3.client("stepfunctions")
+
+          def response(status_code, body):
+              return {
+                  "statusCode": status_code,
+                  "headers": {"content-type": "application/json"},
+                  "body": json.dumps(body, default=str)
+              }
+
+          def lambda_handler(event, context):
+              try:
+                  raw_body = event.get("body") or "{}"
+                  body = json.loads(raw_body) if isinstance(raw_body, str) else raw_body
+              except (TypeError, json.JSONDecodeError):
+                  return response(400, {"message": "Request body must be valid JSON"})
+
+              order_id = str(body.get("orderId", "")).strip()
+              amount = body.get("amount")
+              simulate_failure = body.get("simulateFailure") is True
+
+              if not order_id:
+                  return response(400, {"message": "orderId is required"})
+              if len(order_id) > 100:
+                  return response(400, {"message": "orderId must be 100 characters or fewer"})
+              if (
+                  not isinstance(amount, (int, float))
+                  or isinstance(amount, bool)
+                  or not math.isfinite(amount)
+              ):
+                  return response(400, {"orderId": order_id, "message": "amount must be a number"})
+
+              existing = table.get_item(Key={"orderId": order_id}).get("Item")
+              if existing:
+                  return response(200, {
+                      "orderId": existing["orderId"],
+                      "status": existing.get("status"),
+                      "message": "This orderId already exists; returning its current state"
+                  })
+
+              now = datetime.now(timezone.utc).isoformat()
+              table.put_item(
+                  Item={
+                      "orderId": order_id,
+                      "amount": Decimal(str(amount)),
+                      "status": "PROCESSING",
+                      "createdAt": now,
+                      "updatedAt": now
+                  },
+                  ConditionExpression="attribute_not_exists(orderId)"
+              )
+
+              execution_name = re.sub(r"[^A-Za-z0-9-_]", "-", order_id)[:45]
+              execution_name = execution_name + "-" + uuid.uuid4().hex[:12]
+
+              workflow_input = {
+                  "orderId": order_id,
+                  "amount": amount,
+                  "simulateFailure": simulate_failure
+              }
+
+              try:
+                  execution = step_functions.start_execution(
+                      stateMachineArn=os.environ["STATE_MACHINE_ARN"],
+                      name=execution_name,
+                      input=json.dumps(workflow_input)
+                  )
+                  execution_arn = execution["executionArn"]
+                  table.update_item(
+                      Key={"orderId": order_id},
+                      UpdateExpression="SET executionArn = :arn",
+                      ExpressionAttributeValues={":arn": execution_arn}
+                  )
+                  return response(202, {
+                      "orderId": order_id,
+                      "status": "PROCESSING",
+                      "message": "Order accepted and workflow started",
+                      "executionArn": execution_arn
+                  })
+              except Exception as exc:
+                  table.update_item(
+                      Key={"orderId": order_id},
+                      UpdateExpression="SET #status = :status, reason = :reason, updatedAt = :updated",
+                      ExpressionAttributeNames={"#status": "status"},
+                      ExpressionAttributeValues={
+                          ":status": "FAILED_TO_START",
+                          ":reason": str(exc)[:500],
+                          ":updated": datetime.now(timezone.utc).isoformat()
+                      }
+                  )
+                  raise
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  GetOrderStatusFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub cloudadhar-get-order-${Environment}-iac-day18
+      Description: Returns the current order state to the browser UI.
+      Runtime: python3.14
+      Handler: index.lambda_handler
+      Role: !GetAtt GetOrderStatusRole.Arn
+      Architectures:
+        - x86_64
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref OrdersTable
+      Code:
+        ZipFile: |
+          import json
+          import os
+          from decimal import Decimal
+          import boto3
+
+          table = boto3.resource("dynamodb").Table(os.environ["TABLE_NAME"])
+
+          def json_default(value):
+              if isinstance(value, Decimal):
+                  return int(value) if value % 1 == 0 else float(value)
+              return str(value)
+
+          def response(status_code, body):
+              return {
+                  "statusCode": status_code,
+                  "headers": {"content-type": "application/json"},
+                  "body": json.dumps(body, default=json_default)
+              }
+
+          def lambda_handler(event, context):
+              order_id = (event.get("pathParameters") or {}).get("orderId", "").strip()
+              if not order_id:
+                  return response(400, {"message": "orderId is required"})
+
+              item = table.get_item(Key={"orderId": order_id}).get("Item")
+              if not item:
+                  return response(404, {"orderId": order_id, "message": "Order not found"})
+
+              visible_fields = {
+                  key: item[key]
+                  for key in (
+                      "orderId",
+                      "amount",
+                      "status",
+                      "reason",
+                      "createdAt",
+                      "updatedAt",
+                      "executionArn"
+                  )
+                  if key in item
+              }
+              return response(200, visible_fields)
+      Tags:
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  OrdersHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub cloudadhar-orders-${Environment}-iac-day18
+      Description: HTTP API for the Day 18 order application.
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowMethods:
+          - POST
+          - GET
+          - OPTIONS
+        AllowHeaders:
+          - content-type
+        MaxAge: 300
+      Tags:
+        Project: CloudAdhar-Day18
+        Environment: !Ref Environment
+
+  SubmitOrderIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref OrdersHttpApi
+      Description: Lambda proxy integration for order submission.
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt SubmitOrderFunction.Arn
+      IntegrationMethod: POST
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 30000
+
+  GetOrderStatusIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref OrdersHttpApi
+      Description: Lambda proxy integration for order status.
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt GetOrderStatusFunction.Arn
+      IntegrationMethod: POST
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 30000
+
+  SubmitOrderRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref OrdersHttpApi
+      RouteKey: POST /orders
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref SubmitOrderIntegration
+
+  GetOrderStatusRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref OrdersHttpApi
+      RouteKey: GET /orders/{orderId}
+      Target: !Join
+        - /
+        - - integrations
+          - !Ref GetOrderStatusIntegration
+
+  DefaultStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref OrdersHttpApi
+      StageName: $default
+      AutoDeploy: true
+      Description: Automatically deployed default stage for the classroom lab.
+      Tags:
+        Project: CloudAdhar-Day18
+        Environment: !Ref Environment
+
+  AllowApiGatewayToInvokeSubmitOrder:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SubmitOrderFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${OrdersHttpApi}/*/POST/orders
+
+  AllowApiGatewayToInvokeGetOrderStatus:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref GetOrderStatusFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${OrdersHttpApi}/*/GET/orders/*
+
+  WebSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP access to the CloudAdhar Day 18 classroom UI.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - Description: Classroom UI over HTTP
+          IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref AllowedHttpCidr
+      SecurityGroupEgress:
+        - Description: Required for package installation and API calls
+          IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub cloudadhar-order-ui-${Environment}-iac-day18
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+  WebServer:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - DefaultStage
+    Properties:
+      ImageId: !Ref LatestAmiId
+      InstanceType: !Ref InstanceType
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: true
+          DeviceIndex: "0"
+          GroupSet:
+            - !Ref WebSecurityGroup
+          SubnetId: !Ref PublicSubnetId
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          dnf install -y nginx
+          cat > /usr/share/nginx/html/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1">
+            <title>CloudAdhar Order Portal</title>
+            <style>
+              :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+              * { box-sizing: border-box; }
+              body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #0b1220; color: #e5eefc; }
+              main { width: min(92vw, 720px); padding: 34px; border: 1px solid #26364d; border-radius: 18px; background: #121c2c; box-shadow: 0 18px 60px #0007; }
+              h1 { margin: 0 0 8px; color: #ff9900; }
+              p { color: #aebdd2; }
+              .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+              label { display: grid; gap: 7px; font-weight: 650; }
+              input { width: 100%; border: 1px solid #3b4b64; border-radius: 9px; padding: 12px; background: #0b1220; color: #fff; }
+              .check { display: flex; align-items: center; gap: 8px; margin: 17px 0; font-weight: 500; }
+              .check input { width: auto; }
+              button { width: 100%; border: 0; border-radius: 9px; padding: 13px; background: #ff9900; color: #151515; font-weight: 800; cursor: pointer; }
+              button:disabled { opacity: .55; cursor: wait; }
+              pre { min-height: 125px; overflow: auto; padding: 16px; border-radius: 10px; background: #080d16; color: #a7f3d0; white-space: pre-wrap; }
+              .hint { font-size: .9rem; }
+              @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } main { padding: 24px; } }
+            </style>
+          </head>
+          <body>
+            <main>
+              <h1>CloudAdhar Order Portal</h1>
+              <p>UI → API Gateway → Lambda → Step Functions → DynamoDB</p>
+              <form id="order-form">
+                <div class="grid">
+                  <label>Order ID
+                    <input id="order-id" required value="O-UI-1801" maxlength="100">
+                  </label>
+                  <label>Amount
+                    <input id="amount" required type="number" min="0" step="0.01" value="4500">
+                  </label>
+                </div>
+                <label class="check">
+                  <input id="simulate-failure" type="checkbox">
+                  Simulate a technical failure to demonstrate retry and catch
+                </label>
+                <button id="submit-button" type="submit">Place order</button>
+              </form>
+              <p class="hint">Use a new Order ID for each test. Amount 0 demonstrates business rejection.</p>
+              <pre id="result">Ready.</pre>
+            </main>
+            <script>
+              const API_URL = "https://${OrdersHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}";
+              const form = document.getElementById("order-form");
+              const result = document.getElementById("result");
+              const button = document.getElementById("submit-button");
+              const terminalStates = new Set(["COMPLETED", "REJECTED", "FAILED", "FAILED_TO_START"]);
+
+              function show(data) {
+                result.textContent = JSON.stringify(data, null, 2);
+              }
+
+              async function getStatus(orderId) {
+                const response = await fetch(API_URL + "/orders/" + encodeURIComponent(orderId));
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || "Status request failed");
+                return data;
+              }
+
+              async function poll(orderId) {
+                for (let attempt = 1; attempt <= 30; attempt += 1) {
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  const order = await getStatus(orderId);
+                  show({ pollAttempt: attempt, order: order });
+                  if (terminalStates.has(order.status)) return order;
+                }
+                throw new Error("Polling stopped after 60 seconds. Check Step Functions and DynamoDB.");
+              }
+
+              form.addEventListener("submit", async event => {
+                event.preventDefault();
+                button.disabled = true;
+                result.textContent = "Submitting order...";
+                const orderId = document.getElementById("order-id").value.trim();
+                const payload = {
+                  orderId: orderId,
+                  amount: Number(document.getElementById("amount").value),
+                  simulateFailure: document.getElementById("simulate-failure").checked
+                };
+
+                try {
+                  const response = await fetch(API_URL + "/orders", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify(payload)
+                  });
+                  const data = await response.json();
+                  show(data);
+                  if (!response.ok) throw new Error(data.message || "Order submission failed");
+                  if (data.status === "PROCESSING") await poll(orderId);
+                } catch (error) {
+                  show({ error: error.message });
+                } finally {
+                  button.disabled = false;
+                }
+              });
+            </script>
+          </body>
+          </html>
+          HTML
+          systemctl enable --now nginx
+      Tags:
+        - Key: Name
+          Value: !Sub cloudadhar-order-ui-${Environment}-iac-day18
+        - Key: Project
+          Value: CloudAdhar-Day18
+        - Key: Environment
+          Value: !Ref Environment
+
+Outputs:
+  WebsiteUrl:
+    Description: Open this URL in a browser to place and track an order.
+    Value: !Sub http://${WebServer.PublicDnsName}
+
+  WebsitePublicIp:
+    Description: Public IPv4 address of the EC2-hosted classroom UI.
+    Value: !GetAtt WebServer.PublicIp
+
+  ApiBaseUrl:
+    Description: Base URL of the HTTP API.
+    Value: !Sub https://${OrdersHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}
+
+  SubmitOrderEndpoint:
+    Description: POST a JSON order to this endpoint.
+    Value: !Sub https://${OrdersHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/orders
+
+  GetOrderStatusEndpointPattern:
+    Description: Replace orderId with the submitted order identifier.
+    Value: !Sub https://${OrdersHttpApi}.execute-api.${AWS::Region}.${AWS::URLSuffix}/orders/{orderId}
+
+  OrdersTableName:
+    Description: DynamoDB table used to persist order state.
+    Value: !Ref OrdersTable
+
+  StateMachineArn:
+    Description: ARN of the Standard Step Functions workflow.
+    Value: !Ref OrderStateMachine
+
+  WebServerInstanceId:
+    Description: EC2 instance that hosts the demonstration UI.
+    Value: !Ref WebServer

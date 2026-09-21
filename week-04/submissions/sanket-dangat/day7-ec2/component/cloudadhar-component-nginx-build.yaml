@@ -1,0 +1,35 @@
+name: CloudAdharNginxBuild
+description: Install and configure nginx on Amazon Linux 2023.
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: InstallAndConfigureNginx
+        action: ExecuteBash
+        inputs:
+          commands:
+            - dnf install -y nginx
+            - systemctl enable --now nginx
+            - |
+              cat > /usr/share/nginx/html/index.html <<'HTML'
+              <!doctype html>
+              <html>
+                <head><title>CloudAdhar Golden AMI</title></head>
+                <body>
+                  <h1>CloudAdhar EC2 Image Builder Golden AMI</h1>
+                  <p>nginx was installed by a versioned Image Builder component.</p>
+                </body>
+              </html>
+              HTML
+
+  - name: validate
+    steps:
+      - name: ValidateNginxBuild
+        action: ExecuteBash
+        inputs:
+          commands:
+            - systemctl is-enabled nginx
+            - systemctl is-active nginx
+            - test -f /usr/share/nginx/html/index.html
+            - grep -q "CloudAdhar EC2 Image Builder" /usr/share/nginx/html/index.html
