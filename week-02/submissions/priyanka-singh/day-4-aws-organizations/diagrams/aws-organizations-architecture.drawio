@@ -1,0 +1,98 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="lv5SgarMuo2XcnMDc5aj">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="qaskTAdWoOmLScdXvQUR-21" edge="1" parent="1" source="0DC5jTdVgB662XT8OuLQ-1" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=none;endArrow=none;" target="qaskTAdWoOmLScdXvQUR-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-22" edge="1" parent="1" source="0DC5jTdVgB662XT8OuLQ-1" style="edgeStyle=elbowEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;startArrow=none;endArrow=none;" target="qaskTAdWoOmLScdXvQUR-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <UserObject label="Organization" treeRoot="1" id="0DC5jTdVgB662XT8OuLQ-1">
+          <mxCell parent="1" style="whiteSpace=wrap;html=1;align=center;treeFolding=1;treeMoving=1;newEdgeStyle={&quot;edgeStyle&quot;:&quot;elbowEdgeStyle&quot;,&quot;startArrow&quot;:&quot;none&quot;,&quot;endArrow&quot;:&quot;none&quot;};" vertex="1">
+            <mxGeometry height="60" width="120" x="305" y="10" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-1" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.organizations_management_account;" value="" vertex="1">
+          <mxGeometry height="56.92" width="54" x="186" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-8" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="qaskTAdWoOmLScdXvQUR-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-2" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#E7157B;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.organizations_organizational_unit2;" value="" vertex="1">
+          <mxGeometry height="60" width="60" x="490" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-23" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-3" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#7AA116;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.policy;" value="" vertex="1">
+          <mxGeometry height="50" width="58.21" x="660" y="95" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-10" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-9" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-7" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=0;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#CD2264;dashed=0;" value="AWS Account" vertex="1">
+          <mxGeometry height="40" width="90" x="475" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-30" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-31" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-12">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-9" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=12;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cloudshell;" value="" vertex="1">
+          <mxGeometry height="50" width="50" x="495" y="350" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-15" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-13" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-11" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;Before OU Move&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="210" x="180" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-20" edge="1" parent="1" source="qaskTAdWoOmLScdXvQUR-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="qaskTAdWoOmLScdXvQUR-19" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-12" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="&lt;font style=&quot;font-size: 20px;&quot;&gt;After OU Move&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="190" x="600" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-13" parent="1" style="strokeColor=#dddddd;fillColor=#FFFFFF;shadow=1;strokeWidth=1;rounded=1;absoluteArcSize=1;arcSize=2;" value="" vertex="1">
+          <mxGeometry height="44" width="100" x="235" y="567" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-14" parent="qaskTAdWoOmLScdXvQUR-13" style="sketch=0;dashed=0;connectable=0;html=1;fillColor=#757575;strokeColor=none;shape=mxgraph.gcp2.bucket;part=1;labelPosition=right;verticalLabelPosition=middle;align=left;verticalAlign=middle;spacingLeft=5;fontSize=12;" value="Bucket" vertex="1">
+          <mxGeometry height="32" relative="1" width="32" y="0.5" as="geometry">
+            <mxPoint x="5" y="-16" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-19" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 21px;&quot;&gt;Access Denied&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="665" y="567" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-24" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="SCP Attached&lt;div&gt;(Deny S3 bucket creation)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="146" x="600" y="146.92" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-25" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Management Account&lt;div&gt;(code0ps)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="180" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-27" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Dev-Env OU" vertex="1">
+          <mxGeometry height="30" width="60" x="485" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-28" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Member Account&lt;div&gt;(code0ps-dev)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="30" width="100" x="470" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-29" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="AWS CloudShell" vertex="1">
+          <mxGeometry height="30" width="60" x="490" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-32" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Explicit deny by SCP" vertex="1">
+          <mxGeometry height="30" width="130" x="630" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-33" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Root" vertex="1">
+          <mxGeometry height="30" width="60" x="335" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="qaskTAdWoOmLScdXvQUR-34" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="Bucket Created" vertex="1">
+          <mxGeometry height="30" width="100" x="235" y="620" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
