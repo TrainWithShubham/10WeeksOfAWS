@@ -1,0 +1,5 @@
+#Root_user
+The AWS root user has unrestricted access to all resources and settings in an AWS account, including sensitive billing and account-management operations. Using it for everyday tasks increases the risk of accidental changes, security breaches, and unauthorized access if its credentials are compromised.
+
+#Billing_Alert
+AWS billing should be monitored from the very first day to avoid unexpected charges and maintain control over cloud spending. Even during learning or testing, resources such as EC2 instances, RDS databases, NAT Gateways, and storage can incur costs if left running.
